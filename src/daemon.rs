@@ -72,8 +72,8 @@ pub fn run(config: Config) -> eyre::Result<Infallible> {
                                 stream.get_mut().write_all(b"OK throttled\n")?;
                                 continue;
                             }
-                            charger_last_played = Some(now);
                         }
+                        charger_last_played = Some(now);
 
                         let Some(config) = &builtin_config.charger else {
                             stream.get_mut().write_all(b"ERR no config")?;
