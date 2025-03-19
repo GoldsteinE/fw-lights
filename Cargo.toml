@@ -1,0 +1,19 @@
+[package]
+name = "fw-lights"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+binrw = "0.14.1"
+color-eyre = "0.6.3"
+eyre = "0.6.12"
+humantime-serde = "1.1.1"
+itertools = "0.14.0"
+serde = { version = "1.0.219", features = ["derive"] }
+serialport = { version = "4.7.0", default-features = false }
+smallvec = { version = "1.14.0", features = ["write"] }
+toml = "0.8.20"
+
+[dependencies.framework_lib]
+git = "https://github.com/FrameworkComputer/framework-system"
+version = "0.2.1"
