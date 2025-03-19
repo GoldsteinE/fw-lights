@@ -12,7 +12,7 @@ let
   bash = "${pkgs.bash}/bin/bash";
   sendChargerEvent = pkgs.writeShellScript "fw-lights-send-charger-event" ''
     set -e
-    echo charger | nc -UN ${socket_path}
+    echo charger | ${nc} -UN ${socket_path}
   '';
 in
 {
@@ -92,7 +92,7 @@ in
       };
     };
     services.udev.extraRules = if cfg.builtin.charger != null then ''
-      SUBSYSTEM=="power_supply",ENV{POWER_SUPPLY_ONLINE}=="1",RUN+="${bash} ${sendChargerEvent}"
+      SUBSYSTEM=="power_supply",ENV{POWER_SUPPLY_ONLINE}=="1",RUN+="${sendChargerEvent}"
     '' else "";
   };
 }
