@@ -11,7 +11,7 @@ let
   nc = "${pkgs.netcat}/bin/nc";
   sendChargerEvent = pkgs.writeShellScript "fw-lights-send-charger-event" ''
     set -e
-    echo charger | nc -U ${socket_path}
+    echo charger | nc -UN ${socket_path}
   '';
 in
 {
