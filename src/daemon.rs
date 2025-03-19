@@ -4,7 +4,10 @@ use std::{
     io::{BufRead as _, BufReader, Write as _},
     os::unix::net::UnixListener,
     str::FromStr as _,
-    sync::Arc,
+    sync::{
+        Arc,
+        atomic::{self, AtomicU64},
+    },
     thread,
     time::{Duration, Instant},
 };
@@ -45,6 +48,10 @@ pub fn run(config: Config) -> eyre::Result<Infallible> {
             .collect::<eyre::Result<HashMap<_, _>>>()?,
     );
 
+    let reference = Instant::now();
+    // TODO: this should really be replaced with some sort of "already-playing" detection
+    let charger_last_played = Arc::new(AtomicU64::new(reference.elapsed().as_millis() as u64));
+
     let socket = UnixListener::bind(&config.socket_path)?;
 
     loop {
@@ -53,10 +60,10 @@ pub fn run(config: Config) -> eyre::Result<Infallible> {
         let builtin_config = Arc::clone(&builtin_config);
         let animations = Arc::clone(&animations);
         let displays = Arc::clone(&displays);
+        let charger_last_played = Arc::clone(&charger_last_played);
         thread::spawn(move || -> eyre::Result<()> {
             let mut stream = BufReader::new(stream);
             let mut line = String::new();
-            let mut charger_last_played = None;
             loop {
                 line.clear();
                 if stream.read_line(&mut line)? == 0 {
@@ -66,14 +73,20 @@ pub fn run(config: Config) -> eyre::Result<Infallible> {
                 let words: Vec<_> = line.split_ascii_whitespace().collect();
                 match words.as_slice() {
                     ["charger"] => {
-                        let now = Instant::now();
-                        if let Some(time) = charger_last_played {
-                            if now.duration_since(time) < Duration::from_secs(5) {
-                                stream.get_mut().write_all(b"OK throttled\n")?;
-                                continue;
-                            }
+                        let now = reference.elapsed().as_millis() as u64;
+                        let throttled = charger_last_played
+                            .fetch_update(
+                                atomic::Ordering::Relaxed,
+                                atomic::Ordering::Relaxed,
+                                |old| {
+                                    if now - old > 1000 { Some(now) } else { None }
+                                },
+                            )
+                            .is_err();
+                        if throttled {
+                            stream.get_mut().write_all(b"OK throttled\n")?;
+                            continue;
                         }
-                        charger_last_played = Some(now);
 
                         let Some(config) = &builtin_config.charger else {
                             stream.get_mut().write_all(b"ERR no config")?;
