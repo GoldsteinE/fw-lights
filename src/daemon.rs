@@ -9,7 +9,7 @@ use std::{
         atomic::{self, AtomicU64},
     },
     thread,
-    time::{Duration, Instant},
+    time::Instant,
 };
 
 use framework_lib::power::UsbPowerRoles;
