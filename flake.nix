@@ -39,5 +39,7 @@
       devShells.${system}.default = crane-lib.devShell {
         checks = checks.${system};
       };
+
+      nixosModules.default = import ./module.nix packages.${system};
     };
 }
