@@ -40,6 +40,6 @@
         checks = checks.${system};
       };
 
-      nixosModules.default = import ./module.nix packages.${system};
+      nixosModules.default = import ./module.nix packages.${system}.default;
     };
 }
