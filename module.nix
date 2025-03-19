@@ -1,6 +1,6 @@
 fw-lights: { config, pkgs, ... }:
 let
-  cfg = config.fw-lights;
+  cfg = config.services.fw-lights;
   description = "Framework LED Matrix daemon";
   socket_path = "/run/fw-lights/fw-lights.sock";
 
@@ -15,7 +15,7 @@ let
   '';
 in
 {
-  options.fw-lights = with pkgs.lib; {
+  options.services.fw-lights = with pkgs.lib; {
     enable = mkEnableOption description;
 
     displays = mkOption {
