@@ -68,7 +68,7 @@ pub fn run(config: Config) -> eyre::Result<Infallible> {
                     ["charger"] => {
                         let now = Instant::now();
                         if let Some(time) = charger_last_played {
-                            if now.duration_since(time) < Duration::from_secs(1) {
+                            if now.duration_since(time) < Duration::from_secs(5) {
                                 stream.get_mut().write_all(b"OK throttled\n")?;
                                 continue;
                             }
