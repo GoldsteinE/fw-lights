@@ -6,6 +6,7 @@ use std::{
     str::FromStr as _,
     sync::Arc,
     thread,
+    time::{Duration, Instant},
 };
 
 use framework_lib::power::UsbPowerRoles;
@@ -55,6 +56,7 @@ pub fn run(config: Config) -> eyre::Result<Infallible> {
         thread::spawn(move || -> eyre::Result<()> {
             let mut stream = BufReader::new(stream);
             let mut line = String::new();
+            let mut charger_last_played = None;
             loop {
                 line.clear();
                 if stream.read_line(&mut line)? == 0 {
@@ -64,6 +66,15 @@ pub fn run(config: Config) -> eyre::Result<Infallible> {
                 let words: Vec<_> = line.split_ascii_whitespace().collect();
                 match words.as_slice() {
                     ["charger"] => {
+                        let now = Instant::now();
+                        if let Some(time) = charger_last_played {
+                            if now.duration_since(time) < Duration::from_secs(1) {
+                                stream.get_mut().write_all(b"OK throttled\n")?;
+                                continue;
+                            }
+                            charger_last_played = Some(now);
+                        }
+
                         let Some(config) = &builtin_config.charger else {
                             stream.get_mut().write_all(b"ERR no config")?;
                             continue;

@@ -9,7 +9,6 @@ let
   });
 
   nc = "${pkgs.netcat}/bin/nc";
-  bash = "${pkgs.bash}/bin/bash";
   sendChargerEvent = pkgs.writeShellScript "fw-lights-send-charger-event" ''
     set -e
     echo charger | ${nc} -UN ${socket_path}
