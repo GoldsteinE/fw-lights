@@ -5,6 +5,7 @@ use fw_lights::{config::Config, daemon};
 
 fn main() -> eyre::Result<Infallible> {
     color_eyre::install()?;
+    tracing_subscriber::fmt::init();
 
     let config_path = std::env::args()
         .nth(1)

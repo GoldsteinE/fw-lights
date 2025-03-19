@@ -13,6 +13,7 @@ use std::{
 };
 
 use framework_lib::power::UsbPowerRoles;
+use tracing::{error, info, info_span};
 
 use crate::{
     MatrixPort,
@@ -62,6 +63,12 @@ pub fn run(config: Config) -> eyre::Result<Infallible> {
         let displays = Arc::clone(&displays);
         let charger_last_played = Arc::clone(&charger_last_played);
         thread::spawn(move || -> eyre::Result<()> {
+            let span = info_span!(
+                "worker thread",
+                thread_id = ?thread::current().id()
+            );
+            let _guard = span.enter();
+
             let mut stream = BufReader::new(stream);
             let mut line = String::new();
             loop {
@@ -73,22 +80,24 @@ pub fn run(config: Config) -> eyre::Result<Infallible> {
                 let words: Vec<_> = line.split_ascii_whitespace().collect();
                 match words.as_slice() {
                     ["charger"] => {
+                        info!("asked to play charger animation");
                         let now = reference.elapsed().as_millis() as u64;
-                        let throttled = charger_last_played
-                            .fetch_update(
-                                atomic::Ordering::Relaxed,
-                                atomic::Ordering::Relaxed,
-                                |old| {
-                                    if now - old > 1000 { Some(now) } else { None }
-                                },
-                            )
-                            .is_err();
-                        if throttled {
+                        let last_played = charger_last_played.fetch_update(
+                            atomic::Ordering::Relaxed,
+                            atomic::Ordering::Relaxed,
+                            |old| {
+                                if now - old > 1000 { Some(now) } else { None }
+                            },
+                        );
+                        if let Err(old) = last_played {
+                            info!(old = old, now = now, "throttled charger animation");
+
                             stream.get_mut().write_all(b"OK throttled\n")?;
                             continue;
                         }
 
                         let Some(config) = &builtin_config.charger else {
+                            error!("no config for charger animation");
                             stream.get_mut().write_all(b"ERR no config")?;
                             continue;
                         };
@@ -108,6 +117,7 @@ pub fn run(config: Config) -> eyre::Result<Infallible> {
                                         _ => continue,
                                     };
                                     // already validated
+                                    info!(%side, %animation, %offset, "playing charger animation");
                                     let display = &displays[side].0;
                                     let animation =
                                         animations[animation].at(offset + config.offset);
@@ -119,11 +129,16 @@ pub fn run(config: Config) -> eyre::Result<Infallible> {
                         stream.get_mut().write_all(b"OK\n")?;
                     }
                     &["play", animation, "at", display, ref args @ ..] => {
+                        let display_name = display;
+                        info!(%animation, %display_name, "asked to play animation");
+
                         let Some((display, _thread)) = displays.get(display) else {
+                            error!(%display_name, "bad display");
                             stream.get_mut().write_all(b"ERR bad display\n")?;
                             continue;
                         };
                         let Some(animation_builder) = animations.get(animation) else {
+                            error!(%animation, "bad animation");
                             stream.get_mut().write_all(b"ERR bad animation\n")?;
                             continue;
                         };
@@ -145,6 +160,7 @@ pub fn run(config: Config) -> eyre::Result<Infallible> {
                         stream.get_mut().write_all(b"OK\n")?;
                     }
                     _ => {
+                        error!(command = line, "got unknown command");
                         stream.get_mut().write_all(b"ERR unknown command\n")?;
                     }
                 }
