@@ -9,6 +9,7 @@ let
   });
 
   nc = "${pkgs.netcat}/bin/nc";
+  bash = "${pkgs.bash}/bin/bash";
   sendChargerEvent = pkgs.writeShellScript "fw-lights-send-charger-event" ''
     set -e
     echo charger | nc -UN ${socket_path}
@@ -91,7 +92,7 @@ in
       };
     };
     services.udev.extraRules = if cfg.builtin.charger != null then ''
-      SUBSYSTEM=="power_supply",ENV{POWER_SUPPLY_ONLINE}=="1",RUN+="${sendChargerEvent}"
+      SUBSYSTEM=="power_supply",ENV{POWER_SUPPLY_ONLINE}=="1",RUN+="${bash} ${sendChargerEvent}"
     '' else "";
   };
 }
